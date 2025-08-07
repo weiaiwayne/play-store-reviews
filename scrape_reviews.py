@@ -5,7 +5,7 @@ from datetime import datetime
 from google_play_scraper import app, reviews_all
 import argparse
 
-def scrape_app_reviews(app_id, lang='en', country='us', output_file=None):
+def scrape_app_reviews(app_id, lang='en', country='us', output_file=None, max_count=None):
     """
     Scrape all available reviews for a Google Play Store app.
     
@@ -14,6 +14,7 @@ def scrape_app_reviews(app_id, lang='en', country='us', output_file=None):
         lang: Language code (default: 'en')
         country: Country code (default: 'us')
         output_file: Output file path (optional)
+        max_count: Maximum number of reviews to scrape (optional)
     """
     
     print(f"Fetching app info for: {app_id}")
@@ -33,13 +34,25 @@ def scrape_app_reviews(app_id, lang='en', country='us', output_file=None):
     try:
         # Get all available reviews
         from google_play_scraper import Sort
-        all_reviews = reviews_all(
-            app_id,
-            sleep_milliseconds=100,  # Be respectful to the server
-            lang=lang,
-            country=country,
-            sort=Sort.NEWEST  # Use enum instead of string
-        )
+        if max_count:
+            print(f"Limited to {max_count} reviews")
+            from google_play_scraper import reviews
+            result, _ = reviews(
+                app_id,
+                lang=lang,
+                country=country,
+                sort=Sort.NEWEST,
+                count=max_count
+            )
+            all_reviews = result
+        else:
+            all_reviews = reviews_all(
+                app_id,
+                sleep_milliseconds=100,  # Be respectful to the server
+                lang=lang,
+                country=country,
+                sort=Sort.NEWEST  # Use enum instead of string
+            )
         
         end_time = time.time()
         print(f"Fetched {len(all_reviews)} reviews in {end_time - start_time:.2f} seconds")
@@ -93,6 +106,7 @@ def main():
     parser.add_argument('--lang', default='en', help='Language code (default: en)')
     parser.add_argument('--country', default='us', help='Country code (default: us)')
     parser.add_argument('--output', help='Output JSON file path')
+    parser.add_argument('--max-count', type=int, help='Maximum number of reviews to scrape')
     
     args = parser.parse_args()
     
@@ -100,7 +114,7 @@ def main():
     if not output_file:
         output_file = f"{args.app_id}_reviews_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     
-    dataset = scrape_app_reviews(args.app_id, args.lang, args.country, output_file)
+    dataset = scrape_app_reviews(args.app_id, args.lang, args.country, output_file, args.max_count)
     
     if dataset:
         print("\nScraping completed successfully!")
